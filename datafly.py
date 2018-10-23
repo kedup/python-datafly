@@ -1,5 +1,6 @@
 import argparse
 import csv
+import sys
 from datetime import datetime
 from io import StringIO
 from dgh import CsvDGH
@@ -52,7 +53,7 @@ class _Table:
 
         self.table.close()
 
-    def anonymize(self, qi_names: list, k: int, output_path: str, v=False):
+    def anonymize(self, qi_names: list, k: int, output_path: str, v=True):
 
         """
         Writes a k-anonymous representation of this table on a new file. The maximum number of
@@ -67,13 +68,17 @@ class _Table:
         :raises IOError:    If the output file cannot be written.
         """
 
-        # TODO: stampa qualcosa.
+        global _DEBUG
+
+        if v:
+            _DEBUG = False
 
         self._debug("[DEBUG] Creating the output file...", _DEBUG)
         try:
             output = open(output_path, 'w')
         except IOError:
             raise
+        self._log("[LOG] Created output file.", endl=True, enabled=v)
 
         # Start reading the table file from the top:
         self.table.seek(0)
@@ -122,6 +127,10 @@ class _Table:
                 for j, value in enumerate(qi_sequence):
                     domains[j].add(value)
 
+            self._log("[LOG] Read line %d from the input file." % i, endl=False, enabled=v)
+
+        self._log('', endl=True, enabled=v)
+
         while True:
 
             # Number of tuples which are not k-anonymous.
@@ -134,6 +143,7 @@ class _Table:
                     # Update the number of tuples which are not k-anonymous:
                     count += qi_frequency[qi_sequence][0]
             self._debug("[DEBUG] %d tuples are not yet k-anonymous..." % count, _DEBUG)
+            self._log("[LOG] %d tuples are not yet k-anonymous..." % count, endl=True, enabled=v)
 
             # Limit the number of tuples to suppress to k:
             if count > k:
@@ -149,6 +159,8 @@ class _Table:
                 attribute_idx = max_attribute_idx
                 self._debug("[DEBUG] Attribute with most distinct values is %s..." %
                             qi_names[attribute_idx], _DEBUG)
+                self._log("[LOG] Current attribute with most distinct values is %s." %
+                          qi_names[attribute_idx], endl=True, enabled=v)
 
                 # Generalize each value for that attribute and update the attribute set in the
                 # domains dictionary:
@@ -158,23 +170,23 @@ class _Table:
 
                 # Note: using the list of keys since the dictionary is changed in size at runtime
                 # and it can't be used an iterator:
-                for qi_sequence in list(qi_frequency):
+                for j, qi_sequence in enumerate(list(qi_frequency)):
+
+                    self._log("[LOG] Generalizing sequence %d..." % j, endl=False, enabled=v)
 
                     # Get the generalized value:
                     if qi_sequence[attribute_idx] in generalizations:
                         # Find directly the generalized value in the look up table:
                         generalized_value = generalizations[attribute_idx]
                     else:
-                        # self._debug(
-                        #   "[DEBUG] Generalizing value %s..." % qi_sequence[attribute_idx],
-                        #   _DEBUG)
+                        self._debug(
+                            "[DEBUG] Generalizing value %s..." % qi_sequence[attribute_idx],
+                            _DEBUG)
                         # Get the corresponding generalized value from the attribute DGH:
                         generalized_value = self.dghs[qi_names[attribute_idx]]\
                             .generalize(
                             qi_sequence[attribute_idx],
                             gen_levels[attribute_idx])
-
-                        # TODO: controllare se abbia senso. Non andrà in loop?
 
                         if generalized_value is None:
                             # Skip if it's a hierarchy root:
@@ -207,8 +219,14 @@ class _Table:
                     # Update domain set with this attribute value:
                     domains[attribute_idx].add(qi_sequence[attribute_idx])
 
+                self._log('', endl=True, enabled=v)
+
                 # Update current level of generalization:
                 gen_levels[attribute_idx] += 1
+
+                self._log("[LOG] Generalized attribute %s. Current generalization level is %d." %
+                          (qi_names[attribute_idx], gen_levels[attribute_idx]), endl=True,
+                          enabled=v)
 
             else:
 
@@ -217,11 +235,13 @@ class _Table:
                 for qi_sequence, data in qi_frequency.items():
                     if data[0] < k:
                         qi_frequency.pop(qi_sequence)
+                self._log("[LOG] Suppressed %d tuples." % count, endl=True, enabled=v)
 
                 # Start to read the table file from the start:
                 self.table.seek(0)
 
                 self._debug("[DEBUG] Writing the anonymized table...", _DEBUG)
+                self._log("[LOG] Writing anonymized table...", endl=True, enabled=v)
                 for i, row in enumerate(self.table):
 
                     self._debug("[DEBUG] Reading row %d from original table..." % i, _DEBUG)
@@ -246,8 +266,10 @@ class _Table:
 
         output.close()
 
+        self._log("[LOG] All done.", endl=True, enabled=v)
+
     @staticmethod
-    def _log(content, enabled=True):
+    def _log(content, enabled=True, endl=True):
 
         """
         Prints a log message.
@@ -257,7 +279,10 @@ class _Table:
         """
 
         if enabled:
-            print(content)
+            if endl:
+                print(content)
+            else:
+                sys.stdout.write('\r' + content)
 
     @staticmethod
     def _debug(content, enabled=False):
@@ -432,11 +457,11 @@ if __name__ == "__main__":
         for i, qi_name in enumerate(args.quasi_identifier):
             dgh_paths[qi_name] = args.domain_gen_hierarchies[i]
         table = CsvTable(args.private_table, dgh_paths)
-        table.anonymize(args.quasi_identifier, args.k, args.output)
+        table.anonymize(args.quasi_identifier, args.k, args.output, v=True)
 
         end = (datetime.now() - start).total_seconds()
-        _Table._debug("[DEBUG] Done in %.2f seconds (%.3f minutes (%.2f hours))" %
-                      (end, end / 60, end / 60 / 60), _DEBUG)
+        _Table._log("[LOG] Done in %.2f seconds (%.3f minutes (%.2f hours))" %
+                    (end, end / 60, end / 60 / 60), endl=True, enabled=True)
 
     except FileNotFoundError:
         raise
