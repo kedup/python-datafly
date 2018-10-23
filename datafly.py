@@ -157,9 +157,9 @@ class _Table:
 
                 # Index of the attribute to generalize:
                 attribute_idx = max_attribute_idx
-                self._debug("[DEBUG] Attribute with most distinct values is %s..." %
+                self._debug("[DEBUG] Attribute with most distinct values is '%s'..." %
                             qi_names[attribute_idx], _DEBUG)
-                self._log("[LOG] Current attribute with most distinct values is %s." %
+                self._log("[LOG] Current attribute with most distinct values is '%s'." %
                           qi_names[attribute_idx], endl=True, enabled=v)
 
                 # Generalize each value for that attribute and update the attribute set in the
@@ -172,7 +172,8 @@ class _Table:
                 # and it can't be used an iterator:
                 for j, qi_sequence in enumerate(list(qi_frequency)):
 
-                    self._log("[LOG] Generalizing sequence %d..." % j, endl=False, enabled=v)
+                    self._log("[LOG] Generalizing attribute '%s' for sequence %d..." %
+                              (qi_names[attribute_idx], j), endl=False, enabled=v)
 
                     # Get the generalized value:
                     if qi_sequence[attribute_idx] in generalizations:
@@ -180,7 +181,7 @@ class _Table:
                         generalized_value = generalizations[attribute_idx]
                     else:
                         self._debug(
-                            "[DEBUG] Generalizing value %s..." % qi_sequence[attribute_idx],
+                            "[DEBUG] Generalizing value '%s'..." % qi_sequence[attribute_idx],
                             _DEBUG)
                         # Get the corresponding generalized value from the attribute DGH:
                         generalized_value = self.dghs[qi_names[attribute_idx]]\
@@ -224,7 +225,7 @@ class _Table:
                 # Update current level of generalization:
                 gen_levels[attribute_idx] += 1
 
-                self._log("[LOG] Generalized attribute %s. Current generalization level is %d." %
+                self._log("[LOG] Generalized attribute '%s'. Current generalization level is %d." %
                           (qi_names[attribute_idx], gen_levels[attribute_idx]), endl=True,
                           enabled=v)
 
