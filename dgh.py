@@ -56,7 +56,7 @@ class _DGH:
                 return node.parent.data
 
         # The value is not found:
-        raise KeyError
+        raise KeyError(value)
 
 
 class CsvDGH(_DGH):

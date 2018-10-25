@@ -184,10 +184,18 @@ class _Table:
                             "[DEBUG] Generalizing value '%s'..." % qi_sequence[attribute_idx],
                             _DEBUG)
                         # Get the corresponding generalized value from the attribute DGH:
-                        generalized_value = self.dghs[qi_names[attribute_idx]]\
-                            .generalize(
-                            qi_sequence[attribute_idx],
-                            gen_levels[attribute_idx])
+                        try:
+                            generalized_value = self.dghs[qi_names[attribute_idx]]\
+                                .generalize(
+                                qi_sequence[attribute_idx],
+                                gen_levels[attribute_idx])
+                        except KeyError as error:
+                            self._log('', endl=True, enabled=True)
+                            self._log("[ERROR] Value '%s' is not in hierarchy for attribute '%s'."
+                                      % (error.args[0], qi_names[attribute_idx]),
+                                      endl=True, enabled=True)
+                            output.close()
+                            return
 
                         if generalized_value is None:
                             # Skip if it's a hierarchy root:
@@ -405,7 +413,7 @@ class CsvTable(_Table):
             if attribute in self.attributes:
                 values.append(parsed_row[self.attributes[attribute]])
             else:
-                raise KeyError
+                raise KeyError(attribute)
 
         return values
 
@@ -458,13 +466,22 @@ if __name__ == "__main__":
         for i, qi_name in enumerate(args.quasi_identifier):
             dgh_paths[qi_name] = args.domain_gen_hierarchies[i]
         table = CsvTable(args.private_table, dgh_paths)
-        table.anonymize(args.quasi_identifier, args.k, args.output, v=True)
+        try:
+            table.anonymize(args.quasi_identifier, args.k, args.output, v=True)
+        except KeyError as error:
+            if len(error.args) > 0:
+                _Table._log("[ERROR] Quasi Identifier '%s' is not valid." % error.args[0],
+                            endl=True, enabled=True)
+            else:
+                _Table._log("[ERROR] A Quasi Identifier is not valid.", endl=True, enabled=True)
 
         end = (datetime.now() - start).total_seconds()
         _Table._log("[LOG] Done in %.2f seconds (%.3f minutes (%.2f hours))" %
                     (end, end / 60, end / 60 / 60), endl=True, enabled=True)
 
-    except FileNotFoundError:
-        raise
-    except IOError:
-        raise
+    except FileNotFoundError as error:
+        _Table._log("[ERROR] File '%s' has not been found." % error.filename,
+                    endl=True, enabled=True)
+    except IOError as error:
+        _Table._log("[ERROR] There has been an error with reading file '%s'." % error.filename,
+                    endl=True, enabled=True)
