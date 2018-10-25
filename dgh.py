@@ -1,3 +1,5 @@
+import csv
+from io import StringIO
 from tree import Node, Tree
 
 
@@ -69,7 +71,11 @@ class CsvDGH(_DGH):
             with open(dgh_path, 'r') as file:
                 for line in file:
 
-                    values = line.strip().split(',')
+                    try:
+                        csv_reader = csv.reader(StringIO(line))
+                    except IOError:
+                        raise
+                    values = next(csv_reader)
 
                     # If it doesn't exist a hierarchy with this root, add one:
                     if values[-1] not in self.hierarchies:
